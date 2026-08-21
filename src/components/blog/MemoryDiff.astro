@@ -1,0 +1,38 @@
+---
+// Side-by-side Python vs Mojo memory-control comparison — static, zero JS.
+
+const pythonCode = `# No ownership model. The GC decides.
+kernel = build_matrix(1024)
+
+# Shared mutable state across threads
+result = reduce(kernel)   # GIL serializes this
+
+# To free memory: hope refcounting works
+del kernel  # ...eventually`;
+
+const mojoCode = `# Explicit ownership, zero GC pauses
+var kernel: Matrix = build_matrix(1024)
+
+fn reduce(inout buf: Matrix) -> Float32:
+    # borrowed read, in-place mutation
+    return simd_reduce(buf[])
+
+# Deterministic cleanup at scope exit
+# owned | borrowed | inout — you decide`;
+---
+
+<figure class="not-prose my-8 overflow-hidden rounded-lg border border-border bg-[#0a0a0a]">
+  <figcaption class="border-b border-border px-5 py-2.5 font-mono text-xs uppercase tracking-widest text-zinc-500">
+    fig. 02 — memory control: python vs mojo
+  </figcaption>
+  <div class="grid divide-border md:grid-cols-2 md:divide-x max-md:divide-y">
+    <div class="p-5">
+      <p class="mb-3 font-mono text-xs font-semibold text-red-300/80">python · runtime-managed</p>
+      <pre class="overflow-x-auto font-mono text-[12px] leading-relaxed text-zinc-400"><code>{pythonCode}</code></pre>
+    </div>
+    <div class="p-5">
+      <p class="mb-3 font-mono text-xs font-semibold text-emerald-300/80">mojo · programmer-controlled</p>
+      <pre class="overflow-x-auto font-mono text-[12px] leading-relaxed text-zinc-200"><code>{mojoCode}</code></pre>
+    </div>
+  </div>
+</figure>

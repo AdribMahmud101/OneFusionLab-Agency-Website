@@ -1,0 +1,186 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { getCollection, render } from "astro:content";
+import TldrBlock from "@/components/blog/TldrBlock.astro";
+import KeyTakeaways from "@/components/blog/KeyTakeaways.astro";
+
+export async function getStaticPaths() {
+  const posts = await getCollection("blogs", ({ data }) => !data.isDraft);
+  return posts.map((post) => ({
+    params: { slug: post.id },
+    props: { post },
+  }));
+}
+
+const { post } = Astro.props;
+const { Content, headings } = await render(post);
+const { title, publishDate, author, tldr, tags, takeaways } = post.data;
+
+const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  headline: title,
+  abstract: tldr,
+  datePublished: publishDate.toISOString(),
+  author: { "@type": "Person", name: author },
+  publisher: {
+    "@type": "Organization",
+    name: "One Fusion Lab",
+    url: "https://onefusionlab.systems",
+  },
+  keywords: tags.join(", "),
+  url: `https://onefusionlab.systems/blogs/${post.id}/`,
+  mainEntityOfPage: `https://onefusionlab.systems/blogs/${post.id}/`,
+};
+---
+
+<Layout title={`${title} | One Fusion Lab`}>
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} slot="head" />
+
+  <main class="mx-auto w-full max-w-6xl px-6 py-16 sm:py-20">
+    <div class="lg:grid lg:grid-cols-[1fr_240px] lg:gap-12">
+      <article class="prose prose-zinc dark:prose-invert mx-auto w-full max-w-3xl lg:mx-0">
+        <header>
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs text-muted-foreground">
+            <time datetime={publishDate.toISOString()}>
+              {publishDate.toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </time>
+            <span aria-hidden="true">//</span>
+            <span>{author}</span>
+          </div>
+          <h1 class="mt-4 font-mono text-3xl font-bold tracking-tight sm:text-4xl">{title}</h1>
+        </header>
+
+        <TldrBlock tldr={tldr} />
+        <KeyTakeaways items={takeaways} />
+
+        <section class="mt-10">
+          <Content />
+        </section>
+
+        <footer class="not-prose mt-14 border-t border-border pt-6">
+          <div class="flex flex-wrap gap-2">
+            {tags.map((tag) => (
+              <span class="rounded-full border border-border px-2.5 py-0.5 font-mono text-[11px] text-muted-foreground">
+                {tag}
+              </span>
+            ))}
+          </div>
+          <p class="mt-6 font-mono text-xs text-muted-foreground">
+            Published from One Fusion Lab &middot;
+            <a href="/blogs/" class="text-primary hover:underline">All posts</a>
+          </p>
+        </footer>
+      </article>
+
+      <aside class="hidden lg:block" aria-label="Table of contents">
+        <nav class="sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto">
+          <p class="font-mono text-xs uppercase tracking-widest text-muted-foreground">On this page</p>
+          <ul class="mt-4 space-y-2 border-l border-border text-sm" id="toc-list">
+            {
+              toc.map((h) => (
+                <li>
+                  <a
+                    href={`#${h.slug}`}
+                    data-toc-link
+                    class={`block border-l-2 border-transparent py-0.5 pl-4 text-muted-foreground transition-colors hover:text-foreground ${
+                      h.depth === 3 ? "pl-7 text-[13px]" : ""
+                    }`}
+                  >
+                    {h.text}
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </nav>
+      </aside>
+    </div>
+  </main>
+
+  <script>
+    const article = document.querySelector("article");
+    const tocLinks = document.querySelectorAll<HTMLAnchorElement>("[data-toc-link]");
+
+    if (article && tocLinks.length > 0) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting) {
+              tocLinks.forEach((link) => {
+                const active = link.getAttribute("href") === `#${entry.target.id}`;
+                link.classList.toggle("border-primary", active);
+                link.classList.toggle("text-primary", active);
+              });
+            }
+          }
+        },
+        { rootMargin: "-80px 0px -70% 0px" }
+      );
+      article.querySelectorAll("h2[id], h3[id]").forEach((h) => observer.observe(h));
+    }
+
+    document.querySelectorAll<HTMLElement>("pre > code").forEach((code) => {
+      const pre = code.parentElement as HTMLElement;
+      if (pre.dataset.enhanced) return;
+      pre.dataset.enhanced = "true";
+
+      const langMatch = code.className.match(/language-(\w+)/);
+      const filename = pre.dataset.filename ?? langMatch?.[1] ?? "snippet";
+
+      const lines = code.innerHTML.split("\n");
+      while (lines.length && lines[lines.length - 1].trim() === "") lines.pop();
+      code.innerHTML = lines.map((l) => `<span class="line">${l}\n</span>`).join("");
+
+      const bar = document.createElement("div");
+      bar.className =
+        "flex items-center justify-between rounded-t-lg border-b border-border bg-muted/60 px-4 py-1.5 font-mono text-xs text-muted-foreground";
+      bar.innerHTML = `<span>${filename}</span>`;
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "font-mono text-xs text-muted-foreground transition-colors hover:text-foreground";
+      btn.textContent = "copy";
+      btn.addEventListener("click", async () => {
+        await navigator.clipboard.writeText(code.textContent ?? "");
+        btn.textContent = "copied ✓";
+        setTimeout(() => (btn.textContent = "copy"), 1500);
+      });
+      bar.appendChild(btn);
+
+      pre.classList.add("m-0", "rounded-t-none");
+      const wrapper = document.createElement("figure");
+      wrapper.className = "my-6 overflow-hidden rounded-lg border border-border bg-card";
+      pre.replaceWith(wrapper);
+      wrapper.appendChild(bar);
+      wrapper.appendChild(pre);
+    });
+  </script>
+
+  <style>
+    article :global(pre .line) {
+      display: block;
+    }
+    article :global(pre code) {
+      counter-reset: line;
+      display: block;
+    }
+    article :global(pre code .line::before) {
+      counter-increment: line;
+      content: counter(line);
+      display: inline-block;
+      width: 2rem;
+      margin-right: 1rem;
+      text-align: right;
+      color: var(--color-muted-foreground, #71717a);
+      opacity: 0.5;
+      user-select: none;
+    }
+  </style>
+</Layout>

@@ -1,0 +1,30 @@
+---
+interface Props {
+  items: string[];
+}
+
+const { items } = Astro.props;
+---
+
+{items.length > 0 && (
+  <section
+    class="not-prose my-6 rounded-lg border border-border bg-muted/40 p-5"
+    aria-label="Key takeaways"
+  >
+    <h2 class="font-mono text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+      Key Takeaways
+    </h2>
+    <ul class="mt-3 space-y-2.5">
+      {
+        items.map((item) => (
+          <li class="flex gap-3 text-sm leading-relaxed text-foreground/90">
+            <span class="mt-0.5 font-mono text-primary" aria-hidden="true">
+              &gt;
+            </span>
+            <span set:html={item} />
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+)}
