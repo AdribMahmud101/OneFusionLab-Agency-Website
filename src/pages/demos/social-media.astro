@@ -1,0 +1,33 @@
+---
+import MinimalLayout from '../../layouts/MinimalLayout.astro';
+import { Button } from '@/components/ui/button';
+import { SocialMediaDemo } from '@/components/demos/SocialMediaDemo';
+import { ArrowLeft } from 'lucide-react';
+---
+
+<MinimalLayout>
+	<main class="relative min-h-screen flex flex-col items-center justify-center p-4">
+        
+        {/* Back Button */}
+        <div class="absolute top-6 left-6 z-50">
+            <a href="/ai-automation-demo">
+                <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10">
+                    <ArrowLeft className="w-4 h-4" />
+                    Back to Demos
+                </Button>
+            </a>
+        </div>
+
+		<div class="w-full max-w-7xl mx-auto">
+			<div class="w-full flex justify-center">
+				<SocialMediaDemo client:load />
+			</div>
+		</div>
+
+		{/* Background Gradients */}
+		<div class="absolute top-0 left-0 -z-10 h-full w-full bg-background overflow-hidden">
+			<div class="absolute top-[-10%] right-[-5%] h-[500px] w-[500px] rounded-full bg-cyan-500/05 blur-[120px]" />
+			<div class="absolute bottom-[-10%] left-[-5%] h-[500px] w-[500px] rounded-full bg-purple-500/05 blur-[120px]" />
+		</div>
+	</main>
+</MinimalLayout>
